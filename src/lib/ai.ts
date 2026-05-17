@@ -63,7 +63,7 @@ Responda EXCLUSIVAMENTE em JSON válido neste formato:
 
 O matchScore deve ser um número de 70-99 representando o quanto você acredita que o usuário vai gostar.`;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
