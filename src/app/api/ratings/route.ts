@@ -1,28 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchImdbRatings } from "@/lib/imdb";
+import { parseImdbCsv } from "@/lib/imdb";
 import { searchMovieByImdbId, searchMovieByTitle } from "@/lib/tmdb";
 import type { EnrichedRating } from "@/lib/ai";
 
-export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get("userId")?.trim();
-
-  if (!userId) {
-    return NextResponse.json({ error: "userId é obrigatório" }, { status: 400 });
-  }
-
-  if (!/^(ur\d+|p\.[a-z0-9]+)$/i.test(userId)) {
-    return NextResponse.json(
-      { error: "Formato inválido. Use seu User ID do IMDb (ex: ur12345678 ou p.abc123xyz)" },
-      { status: 400 }
-    );
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const ratings = await fetchImdbRatings(userId);
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!file || typeof file === "string") {
+      return NextResponse.json({ error: "Arquivo CSV é obrigatório" }, { status: 400 });
+    }
+
+    const csvText = await file.text();
+    const ratings = parseImdbCsv(csvText);
 
     if (ratings.length === 0) {
       return NextResponse.json(
-        { error: "Nenhum rating encontrado. Certifique-se de que seus ratings são públicos no IMDb." },
+        { error: "Nenhum rating encontrado no CSV. Certifique-se de exportar seus ratings do IMDb." },
         { status: 404 }
       );
     }
@@ -42,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ratings: enriched, total: enriched.length });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao buscar ratings";
+    const message = error instanceof Error ? error.message : "Erro ao processar CSV";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

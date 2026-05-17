@@ -1,8 +1,3 @@
-import { parseString } from "xml2js";
-import { promisify } from "util";
-
-const parseXml = promisify(parseString);
-
 export interface ImdbRating {
   imdbId: string;
   title: string;
@@ -10,52 +5,71 @@ export interface ImdbRating {
   year: string;
   url: string;
   description: string;
+  genres?: string[];
+  directors?: string[];
+  runtime?: number;
 }
 
-export async function fetchImdbRatings(userId: string): Promise<ImdbRating[]> {
-  const url = `https://rss.imdb.com/user/${userId}/ratings`;
-  const response = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; Watchin/1.0)" },
-    next: { revalidate: 3600 },
-  });
+export function parseImdbCsv(csvText: string): ImdbRating[] {
+  const lines = csvText.trim().split("\n");
+  if (lines.length < 2) throw new Error("CSV vazio ou inválido");
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Usuário do IMDb não encontrado. Verifique o User ID.");
-    }
-    if (response.status === 403) {
-      throw new Error("Ratings do usuário são privados ou o User ID está incorreto.");
-    }
-    throw new Error(`Erro ao buscar ratings: ${response.status}`);
+  const header = parseCsvLine(lines[0]).map((h) => h.trim());
+  const col = (name: string) => header.indexOf(name);
+
+  const idCol = col("Const");
+  const ratingCol = col("Your Rating");
+  const titleCol = col("Title");
+  const yearCol = col("Year");
+  const genreCol = col("Genres");
+  const directorCol = col("Directors");
+  const runtimeCol = col("Runtime (mins)");
+
+  if (idCol === -1 || ratingCol === -1 || titleCol === -1) {
+    throw new Error("Formato de CSV inválido. Exporte diretamente do IMDb (Seus ratings → ··· → Exportar).");
   }
 
-  const xml = await response.text();
-
-  if (!xml.includes("<rss") && !xml.includes("<?xml")) {
-    throw new Error("Resposta inválida do IMDb. Verifique o User ID.");
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parsed: any = await parseXml(xml);
-  const items = parsed?.rss?.channel?.[0]?.item ?? [];
-
-  return items.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (item: any): ImdbRating => {
-      const link: string = item.link?.[0] ?? "";
-      const imdbIdMatch = link.match(/title\/(tt\d+)/);
-      const descRaw: string = item.description?.[0] ?? "";
-      const ratingMatch = descRaw.match(/(\d+)\/10/);
-      const yearMatch = descRaw.match(/\((\d{4})\)/);
-
+  return lines
+    .slice(1)
+    .filter((line) => line.trim())
+    .map((line) => {
+      const cols = parseCsvLine(line);
+      const imdbId = cols[idCol]?.trim() ?? "";
       return {
-        imdbId: imdbIdMatch?.[1] ?? "",
-        title: item.title?.[0] ?? "Desconhecido",
-        yourRating: ratingMatch ? parseInt(ratingMatch[1], 10) : 0,
-        year: yearMatch?.[1] ?? "",
-        url: link,
-        description: descRaw.replace(/<[^>]*>/g, "").trim(),
+        imdbId,
+        title: cols[titleCol]?.trim() ?? "Desconhecido",
+        yourRating: parseInt(cols[ratingCol] ?? "0", 10),
+        year: cols[yearCol]?.trim() ?? "",
+        url: imdbId ? `https://www.imdb.com/title/${imdbId}/` : "",
+        description: "",
+        genres: cols[genreCol]?.split(",").map((g) => g.trim()).filter(Boolean) ?? [],
+        directors: cols[directorCol]?.split(",").map((d) => d.trim()).filter(Boolean) ?? [],
+        runtime: runtimeCol !== -1 ? parseInt(cols[runtimeCol] ?? "0", 10) || undefined : undefined,
       };
+    })
+    .filter((r) => r.yourRating > 0);
+}
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += ch;
     }
-  );
+  }
+  result.push(current);
+  return result;
 }

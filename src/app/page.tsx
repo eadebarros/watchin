@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserIdForm } from "@/components/UserIdForm";
+import { CsvUpload } from "@/components/CsvUpload";
 import { MovieCard } from "@/components/MovieCard";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import type { EnrichedRating, RecommendationResult, Recommendation } from "@/lib/ai";
@@ -16,22 +16,21 @@ export default function Home() {
   const [result, setResult] = useState<
     (RecommendationResult & { recommendations: (Recommendation & { tmdb?: TmdbMovie })[] }) | null
   >(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const handleSubmit = async (userId: string) => {
+  const handleFile = async (file: File) => {
     setError(null);
     setRatings([]);
     setResult(null);
-    setCurrentUserId(userId);
     setStep("fetching-ratings");
 
     try {
-      const ratingsRes = await fetch(`/api/ratings?userId=${encodeURIComponent(userId)}`);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const ratingsRes = await fetch("/api/ratings", { method: "POST", body: formData });
       const ratingsData = await ratingsRes.json();
 
-      if (!ratingsRes.ok) {
-        throw new Error(ratingsData.error ?? "Erro ao buscar ratings");
-      }
+      if (!ratingsRes.ok) throw new Error(ratingsData.error ?? "Erro ao processar CSV");
 
       setRatings(ratingsData.ratings);
       setStep("fetching-recs");
@@ -43,9 +42,7 @@ export default function Home() {
       });
       const recsData = await recsRes.json();
 
-      if (!recsRes.ok) {
-        throw new Error(recsData.error ?? "Erro ao gerar recomendações");
-      }
+      if (!recsRes.ok) throw new Error(recsData.error ?? "Erro ao gerar recomendações");
 
       setResult(recsData);
       setStep("done");
@@ -60,19 +57,17 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-5xl mx-auto px-4 py-16">
-        {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
             <span className="text-amber-500">watchin</span>
           </h1>
           <p className="text-zinc-400 text-lg">
-            Analise seus ratings do IMDb e descubra seu próximo filme favorito
+            Importe seus ratings do IMDb e descubra seu próximo filme favorito
           </p>
         </div>
 
-        {/* Form */}
         <div className="flex flex-col items-center gap-6 mb-16">
-          <UserIdForm onSubmit={handleSubmit} loading={isLoading} />
+          <CsvUpload onFile={handleFile} loading={isLoading} />
 
           {isLoading && (
             <div className="flex flex-col items-center gap-2 text-zinc-400">
@@ -87,8 +82,8 @@ export default function Home() {
               </div>
               <span className="text-sm">
                 {step === "fetching-ratings"
-                  ? "Buscando seus ratings no IMDb..."
-                  : "Claude está analisando seus gostos..."}
+                  ? "Processando seus ratings..."
+                  : "Gemini está analisando seus gostos..."}
               </span>
             </div>
           )}
@@ -100,26 +95,15 @@ export default function Home() {
           )}
         </div>
 
-        {/* Ratings grid */}
         {ratings.length > 0 && (
           <section className="mb-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">
-                Seus ratings recentes
+                Seus ratings
                 <span className="ml-2 text-zinc-500 text-base font-normal">
                   ({ratings.length} filmes)
                 </span>
               </h2>
-              {currentUserId && (
-                <a
-                  href={`https://www.imdb.com/user/${currentUserId}/ratings`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-500 text-sm hover:text-amber-400 transition-colors"
-                >
-                  Ver no IMDb →
-                </a>
-              )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {ratings.map((rating) => (
@@ -129,7 +113,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Profile + Recommendations */}
         {result && (
           <section>
             <div className="bg-gradient-to-r from-amber-500/10 to-zinc-900 border border-amber-500/20 rounded-xl p-6 mb-8">
@@ -149,14 +132,14 @@ export default function Home() {
         )}
 
         {step === "idle" && (
-          <div className="text-center text-zinc-700 mt-8">
+          <div className="text-center text-zinc-700 mt-4">
             <p className="text-6xl mb-4">🎬</p>
-            <p>Digite seu IMDb User ID para começar</p>
+            <p>Importe seu CSV para começar</p>
           </div>
         )}
 
         <footer className="mt-16 text-center text-zinc-700 text-xs">
-          <p>Dados via IMDb RSS · TMDB · Claude AI</p>
+          <p>Dados via IMDb · TMDB · Gemini AI</p>
         </footer>
       </div>
     </main>
