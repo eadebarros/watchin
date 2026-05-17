@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "userId é obrigatório" }, { status: 400 });
   }
 
-  if (!/^ur\d+$/.test(userId)) {
+  if (!/^(ur\d+|p\.[a-z0-9]+)$/i.test(userId)) {
     return NextResponse.json(
-      { error: "Formato inválido. O User ID do IMDb começa com 'ur' seguido de números (ex: ur12345678)" },
+      { error: "Formato inválido. Use seu User ID do IMDb (ex: ur12345678 ou p.abc123xyz)" },
       { status: 400 }
     );
   }

@@ -23,7 +23,7 @@ export function UserIdForm({ onSubmit, loading }: Props) {
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="ur12345678"
+          placeholder="ur12345678 ou p.abc123xyz"
           disabled={loading}
           className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 transition-colors font-mono disabled:opacity-50"
         />
@@ -36,9 +36,9 @@ export function UserIdForm({ onSubmit, loading }: Props) {
         </button>
       </div>
       <p className="text-zinc-600 text-xs text-center">
-        Encontre seu User ID em{" "}
+        Encontre seu User ID na URL do seu perfil:{" "}
         <span className="text-zinc-400">imdb.com/user/</span>
-        <span className="text-amber-500/80">ur12345678</span>
+        <span className="text-amber-500/80">SEU-ID</span>
         {" "}· Ratings devem ser públicos
       </p>
     </form>
