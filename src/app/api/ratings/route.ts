@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchImdbRatings } from "@/lib/imdb";
 import { searchMovieByImdbId, searchMovieByTitle } from "@/lib/tmdb";
-import type { EnrichedRating } from "@/lib/claude";
+import type { EnrichedRating } from "@/lib/ai";
 
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get("userId")?.trim();

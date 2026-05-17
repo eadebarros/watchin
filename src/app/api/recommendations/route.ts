@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRecommendations, type EnrichedRating } from "@/lib/claude";
+import { getRecommendations, type EnrichedRating } from "@/lib/ai";
 import { searchMovieByTitle } from "@/lib/tmdb";
 
 export async function POST(request: NextRequest) {

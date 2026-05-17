@@ -1,8 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { ImdbRating } from "./imdb";
 import type { TmdbMovie } from "./tmdb";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export interface EnrichedRating extends ImdbRating {
   tmdb?: TmdbMovie;
@@ -63,16 +63,11 @@ Responda EXCLUSIVAMENTE em JSON válido neste formato:
 
 O matchScore deve ser um número de 70-99 representando o quanto você acredita que o usuário vai gostar.`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
-  });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
 
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Resposta inesperada do Claude");
-
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Formato de resposta inválido");
 
   return JSON.parse(jsonMatch[0]) as RecommendationResult;

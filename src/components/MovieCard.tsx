@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
-import type { EnrichedRating } from "@/lib/claude";
+import type { EnrichedRating } from "@/lib/ai";
 
 interface Props {
   rating: EnrichedRating;

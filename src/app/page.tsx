@@ -4,7 +4,7 @@ import { useState } from "react";
 import { UserIdForm } from "@/components/UserIdForm";
 import { MovieCard } from "@/components/MovieCard";
 import { RecommendationCard } from "@/components/RecommendationCard";
-import type { EnrichedRating, RecommendationResult, Recommendation } from "@/lib/claude";
+import type { EnrichedRating, RecommendationResult, Recommendation } from "@/lib/ai";
 import type { TmdbMovie } from "@/lib/tmdb";
 
 type Step = "idle" | "fetching-ratings" | "fetching-recs" | "done" | "error";

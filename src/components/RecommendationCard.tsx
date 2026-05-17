@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
-import type { Recommendation } from "@/lib/claude";
+import type { Recommendation } from "@/lib/ai";
 import type { TmdbMovie } from "@/lib/tmdb";
 
 interface Props {
