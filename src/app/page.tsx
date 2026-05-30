@@ -1,146 +1,67 @@
-"use client";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { BADGE_DEFS } from "@/lib/badges";
 
-import { useState } from "react";
-import { CsvUpload } from "@/components/CsvUpload";
-import { MovieCard } from "@/components/MovieCard";
-import { RecommendationCard } from "@/components/RecommendationCard";
-import type { EnrichedRating, RecommendationResult, Recommendation } from "@/lib/ai";
-import type { TmdbMovie } from "@/lib/tmdb";
+export default async function Home() {
+  const session = await auth();
+  if (session?.user) redirect("/dashboard");
 
-type Step = "idle" | "fetching-ratings" | "fetching-recs" | "done" | "error";
-
-export default function Home() {
-  const [step, setStep] = useState<Step>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [ratings, setRatings] = useState<EnrichedRating[]>([]);
-  const [result, setResult] = useState<
-    (RecommendationResult & { recommendations: (Recommendation & { tmdb?: TmdbMovie })[] }) | null
-  >(null);
-
-  const handleFile = async (file: File) => {
-    setError(null);
-    setRatings([]);
-    setResult(null);
-    setStep("fetching-ratings");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const ratingsRes = await fetch("/api/ratings", { method: "POST", body: formData });
-      const ratingsData = await ratingsRes.json();
-
-      if (!ratingsRes.ok) throw new Error(ratingsData.error ?? "Erro ao processar CSV");
-
-      setRatings(ratingsData.ratings);
-      setStep("fetching-recs");
-
-      const recsRes = await fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ratings: ratingsData.ratings }),
-      });
-      const recsData = await recsRes.json();
-
-      if (!recsRes.ok) throw new Error(recsData.error ?? "Erro ao gerar recomendações");
-
-      setResult(recsData);
-      setStep("done");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
-      setStep("error");
-    }
-  };
-
-  const isLoading = step === "fetching-ratings" || step === "fetching-recs";
+  const featuredBadges = BADGE_DEFS.filter((b) =>
+    ["WATCHED_100", "ROGER_EBERT", "HORROR_FAN", "DIRECTOR_DEVOTEE", "HARSH_CRITIC", "WATCHED_500"].includes(b.type)
+  ).slice(0, 6);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
+      <div className="max-w-4xl mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-6xl font-bold mb-4">
             <span className="text-amber-500">watchin</span>
           </h1>
-          <p className="text-zinc-400 text-lg">
-            Importe seus ratings do IMDb e descubra seu próximo filme favorito
+          <p className="text-zinc-400 text-xl max-w-xl mx-auto mb-8">
+            Importe seus ratings do IMDb, descubra seu perfil de cinéfilo e ganhe badges pelo que você assiste.
           </p>
+          <Link
+            href="/login"
+            className="inline-block bg-amber-500 hover:bg-amber-400 text-black font-semibold px-8 py-3 rounded-xl transition-colors text-lg"
+          >
+            Criar meu perfil
+          </Link>
         </div>
 
-        <div className="flex flex-col items-center gap-6 mb-16">
-          <CsvUpload onFile={handleFile} loading={isLoading} />
+        {/* Feature highlights */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16 text-center">
+          {[
+            { emoji: "📊", title: "Perfil público", desc: "URL própria com suas stats, gêneros favoritos e histórico" },
+            { emoji: "🏅", title: "Sistema de badges", desc: "Desbloqueie conquistas baseadas em filmes assistidos e hábitos" },
+            { emoji: "🤖", title: "Recomendações com IA", desc: "Gemini analisa seus ratings e sugere o próximo filme ideal" },
+          ].map(({ emoji, title, desc }) => (
+            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <p className="text-4xl mb-3">{emoji}</p>
+              <h3 className="font-semibold mb-1">{title}</h3>
+              <p className="text-zinc-500 text-sm">{desc}</p>
+            </div>
+          ))}
+        </div>
 
-          {isLoading && (
-            <div className="flex flex-col items-center gap-2 text-zinc-400">
-              <div className="flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  />
-                ))}
+        {/* Badge preview */}
+        <div className="mb-16">
+          <h2 className="text-center text-zinc-500 text-sm uppercase tracking-wider mb-6">Alguns badges para ganhar</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {BADGE_DEFS.slice(0, 6).map((b) => (
+              <div key={b.type} className="flex flex-col items-center gap-1 p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-center opacity-60">
+                <span className="text-2xl">{b.emoji}</span>
+                <span className="text-xs text-zinc-400">{b.label}</span>
               </div>
-              <span className="text-sm">
-                {step === "fetching-ratings"
-                  ? "Processando seus ratings..."
-                  : "Gemini está analisando seus gostos..."}
-              </span>
-            </div>
-          )}
-
-          {step === "error" && error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm max-w-md text-center">
-              {error}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
-        {ratings.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">
-                Seus ratings
-                <span className="ml-2 text-zinc-500 text-base font-normal">
-                  ({ratings.length} filmes)
-                </span>
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {ratings.map((rating) => (
-                <MovieCard key={rating.imdbId || rating.title} rating={rating} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {result && (
-          <section>
-            <div className="bg-gradient-to-r from-amber-500/10 to-zinc-900 border border-amber-500/20 rounded-xl p-6 mb-8">
-              <p className="text-sm text-amber-500 font-medium mb-2 uppercase tracking-wider">
-                Seu perfil cinematográfico
-              </p>
-              <p className="text-zinc-300 leading-relaxed">{result.profile}</p>
-            </div>
-
-            <h2 className="text-xl font-semibold mb-6">Recomendado para você</h2>
-            <div className="flex flex-col gap-4">
-              {result.recommendations.map((rec, i) => (
-                <RecommendationCard key={rec.title} rec={rec} rank={i + 1} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {step === "idle" && (
-          <div className="text-center text-zinc-700 mt-4">
-            <p className="text-6xl mb-4">🎬</p>
-            <p>Importe seu CSV para começar</p>
-          </div>
-        )}
-
-        <footer className="mt-16 text-center text-zinc-700 text-xs">
-          <p>Dados via IMDb · TMDB · Gemini AI</p>
-        </footer>
+        <div className="text-center">
+          <Link href="/login" className="text-amber-500 hover:text-amber-400 font-semibold transition-colors">
+            Entrar com Google →
+          </Link>
+        </div>
       </div>
     </main>
   );
